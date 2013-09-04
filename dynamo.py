@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import base64
+import getpass
 import json
 from optparse import OptionParser
 import os
@@ -115,8 +116,8 @@ def get_login(uid, passwd):
 
     if not passwd:
         while True:
-            sys.stdout.write("Please enter your domain password: ")
-            passwd = raw_input()
+            # sys.stdout.write("Please enter your domain password: ")
+            passwd = getpass.getpass("Please enter your domain password: ")
             if True:
                 break
             else:
