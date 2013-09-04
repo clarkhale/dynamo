@@ -30,6 +30,8 @@ def main():
     #                   help="hostname to register")
     # parser.add_option("-i", "--iprange", dest="iprange",
     #                   help="IP address to register")
+    parser.add_option("-a", "--allowed", dest="allowed", default=False,
+                      help="Print allowed domains and ranges and exit", action="store_true")
     parser.add_option("-d", "--debug", dest="debug", default=False,
                       help="Debugging output to STDERR", action="store_true")
     parser.add_option("-u", "--username", dest="username",
@@ -41,6 +43,15 @@ def main():
 
 
     (options, args) = parser.parse_args()
+
+    if options.allowed:
+        print "Allowed domains are as follows:"
+        for domain in allowed_domains:
+            print "  " + domain
+        print "Allowed IP ranges are as follows:"
+        for ipr in allowed_ranges:
+            print "  " + ipr
+        return 0
 
     if options.debug:
         debug = True
@@ -60,11 +71,12 @@ def main():
     hn_elems = hostname.split(".")
     if ( len(hn_elems) < 3 or
          not (hn_elems[-1] == "net" or hn_elems[-1] == "com" or
-              hn_elems[-1] == "corps" )
+              hn_elems[-1] == "corp" )
          ):
-        print len(hn_elems)
-        print hn_elems
-        print hn_elems[-1]
+        if debug:
+            print len(hn_elems)
+            print hn_elems
+            print hn_elems[-1]
         print "{0:s} does not appear to be a valid FQDN.".format(hostname)
         return 1
     elif ".".join(hn_elems[1:]) not in allowed_domains:
