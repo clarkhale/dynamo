@@ -34,12 +34,16 @@ def main():
                       help="Print allowed domains and ranges and exit", action="store_true")
     parser.add_option("-d", "--debug", dest="debug", default=False,
                       help="Debugging output to STDERR", action="store_true")
+    parser.add_option("-n", "--noaction", dest="noaction", default=False,
+                      help="Don't make any changes", action="store_true")
+    parser.add_option("-o", "--output", dest="outputtype", default="user",
+                      help="Output results as JSON or XML")
+    parser.add_option("-p", "--password", dest="password",
+                      help="Your domain password")
     parser.add_option("-u", "--username", dest="username",
                       help="Your numeric company user ID")
     parser.add_option("-v", "--verbose", dest="verbose", default=False,
                       help="Verbose output to STDERR", action="store_true")
-    parser.add_option("-p", "--password", dest="password",
-                      help="Your domain password")
 
 
     (options, args) = parser.parse_args()
@@ -57,10 +61,22 @@ def main():
         debug = True
         print "Debug on."
 
+
     if options.verbose:
         verbose = True
         print "Verbose on."
 
+    noaction = False
+    if options.noaction:
+        noaction = True
+        if debug or verbose:
+            print "Noaction: dry run."
+
+    outputtype = options.outputtype
+    if outputtype == "xml":
+        print "Sorry, XML not supported yet."
+        return 1
+        
     if len(args) != 2:
         print usage
         return 1
@@ -113,9 +129,18 @@ def main():
     if verbose:
         print "Next available IP address is " + availip
 
-    hostref = register_host(uid, passwd, availip, hostname)
+    if not noaction:
+        hostref = register_host(uid, passwd, availip, hostname)
 
-    print "Assigning " + availip + " to " + hostname + "."
+    if outputtype == "user":
+        print "Assigning " + availip + " to " + hostname + "."
+    elif outputtype == "json":
+        print json.dumps( { 'hostname'  : hostname,
+                            'ipaddress' : availip,
+                            'iprange'   : iprange } )
+    elif outputtype == "xml":
+        print "Sorry, XML not supported yet..."
+        return 1
 
     return 0
 
@@ -217,13 +242,14 @@ def get_next_available(uid, passwd, iprangeref, cnt=10):
         if resp == 0:
             if debug:
                 print ipaddr, "is up!"
-            print "\n"
-            print "========================================================"
-            print "Please open a case with the OCC.  IP {0:s}".format(ipaddr)
-            print "is pingable, but is not listed in Infoblox Grid as a"
-            print "used IP address. (ignore for now)" 
-            print "========================================================"
-            print "\n"
+            if verbose:
+                print "\n"
+                print "========================================================"
+                print "Please open a case with the OCC.  IP {0:s}".format(ipaddr)
+                print "is pingable, but is not listed in Infoblox Grid as a"
+                print "used IP address. (ignore for now)" 
+                print "========================================================"
+                print "\n"
         else:
             if debug:
                 print ipaddr, "is down!"
