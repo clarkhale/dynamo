@@ -69,6 +69,9 @@ def main():
         return 1
     elif ".".join(hn_elems[1:]) not in allowed_domains:
         print "{0:s} is not an allowed domain.".format(".".join(hn_elems[1:]))
+        print "Allowed domains are as follows:"
+        for domain in allowed_domains:
+            print "  " + domain
         return 1
 
     if not re.match('([0-9]+)(?:\.[0-9]+){3}', iprange):
@@ -76,6 +79,9 @@ def main():
         return 1
     elif not iprange in allowed_ranges:
         print "{0:s} is not an allowed IP range".format(iprange)
+        print "Allowed IP ranges are as follows:"
+        for ipr in allowed_ranges:
+            print "  " + ipr
         return 1
 
     uid = ""
