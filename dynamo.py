@@ -103,6 +103,8 @@ def main():
 
     hostref = register_host(uid, passwd, availip, hostname)
 
+    print "Assigning " + availip + " to " + hostname + "."
+
     return 0
 
 
@@ -207,7 +209,7 @@ def get_next_available(uid, passwd, iprangeref, cnt=10):
             print "========================================================"
             print "Please open a case with the OCC.  IP {0:s}".format(ipaddr)
             print "is pingable, but is not listed in Infoblox Grid as a"
-            print "used IP address."
+            print "used IP address. (ignore for now)" 
             print "========================================================"
             print "\n"
         else:
