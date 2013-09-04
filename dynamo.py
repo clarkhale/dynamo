@@ -132,13 +132,13 @@ def main():
     if not noaction:
         hostref = register_host(uid, passwd, availip, hostname)
 
-    if outputtype == "user":
+    if outputtype.lower() == "user":
         print "Assigning " + availip + " to " + hostname + "."
-    elif outputtype == "json":
+    elif outputtype.lower() == "json":
         print json.dumps( { 'hostname'  : hostname,
                             'ipaddress' : availip,
                             'iprange'   : iprange } )
-    elif outputtype == "xml":
+    elif outputtype.lower() == "xml":
         print "Sorry, XML not supported yet..."
         return 1
 
