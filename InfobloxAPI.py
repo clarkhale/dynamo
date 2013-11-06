@@ -176,7 +176,8 @@ class InfobloxAPI:
             'comment'    : 'Dynamically entered by ' + self.username
             }
         headers = { 'content-type' : 'application/json' }
-        print data
+        if self.debug:
+            print data
         self.r = requests.post(self.url + 'record:host',
                                data=json.dumps(data),
                                auth=(self.username, self.password),
