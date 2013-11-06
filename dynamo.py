@@ -33,7 +33,10 @@ def main():
 
     r = { }  # r will hold response from wapi calls
     iprange  = opt['iprange']
-    hostname = opt['hostname']
+    if opt['hostname']:
+        hostname = opt['hostname']
+    else:
+        hostname = wapi.next_available_name(opt['prefix'], 4, opt['domain'])
     if not opt['noaction']:
         r = wapi.rh_add( iprange,
                          wapi.next_available_ip(iprange),
@@ -74,7 +77,13 @@ def get_options():
                       help="Print allowed domains and ranges and exit", action="store_true")
     parser.add_option("-d", "--debug", dest="debug", default=False,
                       help="Debugging output to STDERR", action="store_true")
-    parser.add_option("-n", "--noaction", dest="noaction", default=False,
+    parser.add_option("-f", "--prefix", dest="prefix", default="",
+                      help="Prefix for autogen hostname")
+    parser.add_option("-m", "--domain", dest="domain", default="",
+                      help="Domain for autogen hostname")
+    parser.add_option("-n", "--name", dest="hostname", default="",
+                      help="FQDN to be added")
+    parser.add_option("--noaction", dest="noaction", default=False,
                       help="Don't make any changes", action="store_true")
     parser.add_option("-o", "--output", dest="outputtype", default="user",
                       help="Output results as JSON or XML")
@@ -117,31 +126,55 @@ def get_options():
     if opt['outputtype'] == "xml":
         print "Sorry, XML not supported yet."
         sys.exit(1)
+
+    opt['hostname'] = ''
+    opt['prefix']   = ''
+    opt['domain']   = ''
+
+    if options.hostname:
+        opt['hostname'] = options.hostname
+        if debug:
+            print "hostname: " + opt['hostname']
+
+    if options.prefix or options.domain:
+        if not options.prefix and options.domain:
+            print "Exiting because either prefix or domain but not both."
+            sys.exit(1)
+        elif options.hostname:
+            print "Exiting because hostname given with prefix and domain."
+            sys.exit(1)
+
+        opt['prefix'] = options.prefix
+        opt['domain'] = options.domain
+
+    if not opt['hostname'] and not (opt['prefix'] and opt['domain']):
+        print "Hostanme not given, and no prefix and domain given."
+        sys.exit(1)
         
-    if len(args) != 2:
+    if len(args) != 1:
         print usage
         sys.exit(1)
 
-    opt['hostname'] = args[0]
-    opt['iprange']  = args[1]
+    opt['iprange']  = args[0]
 
-    hn_elems = opt['hostname'].split(".")
-    if ( len(hn_elems) < 3 or
-         not (hn_elems[-1] == "net" or hn_elems[-1] == "com" or
-              hn_elems[-1] == "corp" )
-         ):
-        if debug:
-            print len(hn_elems)
-            print hn_elems
-            print hn_elems[-1]
-        print "{0:s} does not appear to be a valid FQDN.".format(opt['hostname'])
-        sys.exit(1)
-    elif ".".join(hn_elems[1:]) not in allowed_domains:
-        print "{0:s} is not an allowed domain.".format(".".join(hn_elems[1:]))
-        print "Allowed domains are as follows:"
-        for domain in allowed_domains:
-            print "  " + domain
-        sys.exit(1)
+    if opt['hostname']:
+        hn_elems = opt['hostname'].split(".")
+        if ( len(hn_elems) < 3 or
+             not (hn_elems[-1] == "net" or hn_elems[-1] == "com" or
+                  hn_elems[-1] == "corp" )
+             ):
+            if debug:
+                print len(hn_elems)
+                print hn_elems
+                print hn_elems[-1]
+            print "{0:s} does not appear to be a valid FQDN.".format(opt['hostname'])
+            sys.exit(1)
+        elif ".".join(hn_elems[1:]) not in allowed_domains:
+            print "{0:s} is not an allowed domain.".format(".".join(hn_elems[1:]))
+            print "Allowed domains are as follows:"
+            for domain in allowed_domains:
+                print "  " + domain
+            sys.exit(1)
 
     iprange = opt['iprange']
     if not re.match('([0-9]+)(?:\.[0-9]+){3}', iprange):
