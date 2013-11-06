@@ -10,6 +10,7 @@ import sys
 
 debug   = False
 verbose = False
+opt     = {}
 
 gridmgr = '10.69.15.170'
 
@@ -22,7 +23,47 @@ allowed_domains = [ 'ci.snops.net',
                     ]
 
 def main():
-    global debug, verbose
+    global opt, debug, verbose
+
+    # most cli optnios available in global hash opt; e.g., opt['hostname']
+    get_options()
+
+    wapi = InfobloxAPI(gridmgr, opt['uid'], opt['passwd'], 
+                       debug=debug, verbose=verbose, verify=False)
+
+    r = { }  # r will hold response from wapi calls
+    iprange  = opt['iprange']
+    hostname = opt['hostname']
+    if not opt['noaction']:
+        r = wapi.rh_add( iprange,
+                         wapi.next_available_ip(iprange),
+                         hostname )
+    else:
+        print "Bailing due to noaction flag."
+        return 1
+
+    if not r:
+        print "Unknown error in WAPI call."
+        return 0
+    
+
+    return print_output(r)
+
+
+def print_output(r):
+    if opt['outputtype'].lower() == "user":
+        print "Assigning " + r['ipaddr'] + " to " + r['name'] + "."
+    elif opt['outputtype'].lower() == "json":
+        print json.dumps( { 'hostname'  : r['name'],
+                            'ipaddress' : r['ipaddr'],
+                            'iprange'   : iprange } )
+    elif outputtype.lower() == "xml":
+        print "Sorry, XML not supported yet..."
+        return 1
+
+    return 0
+
+def get_options():
     usage = "Usage: %prog [options] <FQDN to register> <IP range>"
     parser = OptionParser(usage=usage)
     # parser.add_option("-n", "--name", dest="hostname",
@@ -54,36 +95,37 @@ def main():
         print "Allowed IP ranges are as follows:"
         for ipr in allowed_ranges:
             print "  " + ipr
-        return 0
+        sys.exit(0)
 
+    debug = False
     if options.debug:
         debug = True
         print "Debug on."
 
-
+    verbose = True
     if options.verbose:
         verbose = True
         print "Verbose on."
 
-    noaction = False
+    opt['noaction'] = False
     if options.noaction:
-        noaction = True
+        opt['noaction'] = True
         if debug or verbose:
             print "Noaction: dry run."
 
-    outputtype = options.outputtype
-    if outputtype == "xml":
+    opt['outputtype'] = options.outputtype
+    if opt['outputtype'] == "xml":
         print "Sorry, XML not supported yet."
-        return 1
+        sys.exit(1)
         
     if len(args) != 2:
         print usage
-        return 1
+        sys.exit(1)
 
-    hostname = args[0]
-    iprange  = args[1]
+    opt['hostname'] = args[0]
+    opt['iprange']  = args[1]
 
-    hn_elems = hostname.split(".")
+    hn_elems = opt['hostname'].split(".")
     if ( len(hn_elems) < 3 or
          not (hn_elems[-1] == "net" or hn_elems[-1] == "com" or
               hn_elems[-1] == "corp" )
@@ -92,61 +134,37 @@ def main():
             print len(hn_elems)
             print hn_elems
             print hn_elems[-1]
-        print "{0:s} does not appear to be a valid FQDN.".format(hostname)
-        return 1
+        print "{0:s} does not appear to be a valid FQDN.".format(opt['hostname'])
+        sys.exit(1)
     elif ".".join(hn_elems[1:]) not in allowed_domains:
         print "{0:s} is not an allowed domain.".format(".".join(hn_elems[1:]))
         print "Allowed domains are as follows:"
         for domain in allowed_domains:
             print "  " + domain
-        return 1
+        sys.exit(1)
 
+    iprange = opt['iprange']
     if not re.match('([0-9]+)(?:\.[0-9]+){3}', iprange):
         print "{0:s} does not appear to be a valid IP range".format(iprange)
-        return 1
+        sys.exit(1)
     elif not iprange in allowed_ranges:
         print "{0:s} is not an allowed IP range".format(iprange)
         print "Allowed IP ranges are as follows:"
         for ipr in allowed_ranges:
             print "  " + ipr
-        return 1
+        sys.exit(1)
 
-    uid = ""
+    opt['uid'] = ""
     if options.username:
-        uid = options.username
+        opt['uid'] = options.username
 
-    passwd = ""
+    opt['passwd'] = ""
     if options.password:
-        passwd = options.password
+        opt['passwd'] = options.password
 
-    (uid, passwd) = get_login(uid, passwd)
+    (opt['uid'], opt['passwd']) = get_login(opt['uid'], opt['passwd'])
     if debug:
-        print "{0:s}, {1:s}".format(uid, passwd)
-
-    wapi = InfobloxAPI(gridmgr, uid, passwd, 
-                       debug=True, verbose=True, verify=False)
-
-    r = { }
-    if not noaction:
-        r = wapi.rh_add( iprange,
-                         wapi.next_available_ip(iprange),
-                         hostname )
-
-    if not r:
-        print "Unknown error in WAPI call."
-        return 0
-    
-    if outputtype.lower() == "user":
-        print "Assigning " + r['ipaddr'] + " to " + r['name'] + "."
-    elif outputtype.lower() == "json":
-        print json.dumps( { 'hostname'  : r['name'],
-                            'ipaddress' : r['ipaddr'],
-                            'iprange'   : iprange } )
-    elif outputtype.lower() == "xml":
-        print "Sorry, XML not supported yet..."
-        return 1
-
-    return 0
+        print "{0:s}, {1:s}".format(opt['uid'], opt['passwd'])
 
 
 def get_login(uid, passwd):
