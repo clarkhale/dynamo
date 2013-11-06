@@ -1,5 +1,8 @@
 *.py[cod]
 
+# Emacs backups
+*~
+
 # C extensions
 *.so
 
@@ -33,3 +36,12 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Specific hardcoded files
+InfoBloxAPI.py
+curl.txt
+debug.py
+exist.py
+r-exists.py
+test.pl
+wapi.py
