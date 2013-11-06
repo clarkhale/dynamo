@@ -67,6 +67,8 @@ def print_output(r):
     return 0
 
 def get_options():
+    global debug, verbose, opt
+
     usage = "Usage: %prog [options] <FQDN to register> <IP range>"
     parser = OptionParser(usage=usage)
     # parser.add_option("-n", "--name", dest="hostname",
