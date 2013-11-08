@@ -5,6 +5,7 @@ from InfobloxAPI import InfobloxAPI
 from optparse import OptionParser
 import os
 import re
+import socket
 import sys
 
 debug   = False
@@ -35,27 +36,27 @@ def main():
             print "Checking {0:s}".format(hostname)
         available = True
         for d in opt['domain']:
+            fqdn = hostname + '.' + d
             if verbose:
                 print "  {0:s}: ".format(d), 
 
             # Test DNS
             try:
                 socket.gethostbyname(fqdn)
-                print "DNS lookup"
                 available = False
                 break
             except:
                 pass
 
             # Test record:a
-            if i.ra_exists(hostname + '.' + d):
+            if i.ra_exists(fqdn):
                 if verbose:
                     print "Infoblox record:a"
                 available = False
                 break
 
             # Test record:host
-            if i.rh_exists(hostname + '.' + d):
+            if i.rh_exists(fqdn):
                 if verbose:
                     print "Infoblox record:host"
                 available = False
