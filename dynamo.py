@@ -16,10 +16,12 @@ gridmgr = '10.69.15.170'
 
 # Remove hardcode
 allowed_ranges  = [ '10.39.2.0/23',
+                    '10.39.32.0/24',
                     ]
 
 # Remove hardcode
 allowed_domains = [ 'ci.snops.net',
+                    'ops.sn.corp',
                     ]
 
 def main():
@@ -36,7 +38,7 @@ def main():
     if opt['hostname']:
         hostname = opt['hostname']
     else:
-        hostname = wapi.next_available_name(opt['prefix'], 4, opt['domain'])
+        hostname = wapi.next_available_name(opt['prefix'], 217, opt['domain'], digits=3)
     if not opt['noaction']:
         r = wapi.rh_add( iprange,
                          wapi.next_available_ip(iprange),
@@ -50,6 +52,7 @@ def main():
         return 0
     
 
+    r['iprange'] = iprange
     return print_output(r)
 
 
@@ -59,7 +62,7 @@ def print_output(r):
     elif opt['outputtype'].lower() == "json":
         print json.dumps( { 'hostname'  : r['name'],
                             'ipaddress' : r['ipaddr'],
-                            'iprange'   : iprange } )
+                            'iprange'   : r['iprange'] } )
     elif outputtype.lower() == "xml":
         print "Sorry, XML not supported yet..."
         return 1
