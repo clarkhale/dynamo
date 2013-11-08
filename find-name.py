@@ -61,7 +61,8 @@ def main():
                 available = False
                 break
 
-            print ""
+            if verbose:
+                print ""
 
         if available:
             if verbose:
