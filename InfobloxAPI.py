@@ -8,10 +8,12 @@ Spec: Infoblox_RESTful_API_Documentation_1.1
 
 """
 
+import datetime
 import json
 import os
 import requests
 import sys
+import time
 
 class InfobloxAPI:
     """ Return an object with all the information required to start
@@ -52,6 +54,7 @@ class InfobloxAPI:
 
     def rh_exists(self, hostname, like=False):
         """Test if a record:host for name=hostname exists.
+           Return True or False.
         """
         if like:
             data = { 'name~' : hostname  }
@@ -64,10 +67,14 @@ class InfobloxAPI:
         if self.debug:
             print "inside rh_exists: " + hostname
             print self.r.text
+
+
         return self.r.json()
 
     def ra_exists(self, hostname, like=False):
-        """record:a_record for name=hostname exist?"""
+        """record:a_record for name=hostname exist?
+           Return True or False.
+        """
         if like:
             data = { 'name~' : hostname  }
         else:
@@ -136,6 +143,38 @@ class InfobloxAPI:
                 return ipaddr
         return False
 
+    def next_available_name(self, prefix, cnt_start, domain, digits=4, run=1024):
+        """Find the next available name of form prefix + 0001 + domain
+        
+        Starts at cnt_start and then checks sequentially up to 
+        cnt_start + run, looking for available names.
+        
+        Checks the Infoblox API for record:host entry, record:a
+        entry, and finally just a DNS lookup.  The first name which
+        shows clear in all those is returned.
+        """
+        for i in range(cnt_start, run):
+            if self.debug:
+                print "i: " + str(i)
+            fqdn = prefix + str(i).zfill(digits) + '.' + domain
+            if self.debug:
+                print fqdn
+
+            if self.rh_exists(fqdn):
+                continue
+            elif self.ra_exists(fqdn):
+                continue
+            elif True:
+                try:
+                    socket.gethostbyname(fqdn)
+                    continue
+                except:
+                    return fqdn
+            else:
+                return fqdn
+        return False
+
+
     def rh_add(self, network, ipaddr, fqdn):
         """Create record:host for network=network, 
            name=hostname and ipaddr=ipaddr"""
@@ -146,7 +185,7 @@ class InfobloxAPI:
             'name'       : fqdn,
             # removed hardcoded view and comment.  Add date to comment. TODO
             'view'       : 'Infoblox Internal',
-            'comment'    : 'Dynamically entered by ' + self.username
+            'comment'    : 'Dynamically entered by ' + self.username + ' ' + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
             }
         headers = { 'content-type' : 'application/json' }
         if self.debug:
@@ -159,9 +198,13 @@ class InfobloxAPI:
             print "inside rh_add: " + fqdn
             print self.r.text
 
-        if self.r.json()['Error']:
-            print self.r.json()
-            sys.exit(1)
+        try:
+            if self.r.json()['Error']:
+                print self.r.json()
+                raise Exception(self.r.json()['Error'])
+                # sys.exit(1)
+        except:
+            pass
             
         return( { 'ipaddr' : ipaddr,
                   'name'   : fqdn } )
