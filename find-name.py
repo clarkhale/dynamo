@@ -74,38 +74,6 @@ def main():
 
     return 1
 
-def next_available_name(self, prefix, cnt_start, domain, digits=4, run=1024):
-    """Find the next available name of form prefix + 0001 + domain
-
-       Starts at cnt_start and then checks sequentially up to 
-       cnt_start + run, looking for available names.
-
-       Checks the Infoblox API for record:host entry, record:a
-       entry, and finally just a DNS lookup.  The first name which
-       shows clear in all those is returned.
-    """
-    for i in range(cnt_start, run):
-        if self.debug:
-            print "i: " + str(i)
-        fqdn = prefix + str(i).zfill(digits) + '.' + domain
-        if self.debug:
-            print fqdn
-
-        if self.rh_exists(fqdn):
-            continue
-        elif self.ra_exists(fqdn):
-            continue
-        elif True:
-            try:
-                socket.gethostbyname(fqdn)
-                continue
-            except:
-                return fqdn
-        else:
-            return fqdn
-    return False
-
-
 def get_options():
     global debug, verbose, opt
 
