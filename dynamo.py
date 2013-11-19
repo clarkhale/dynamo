@@ -3,10 +3,12 @@
 import getpass
 from InfobloxAPI import InfobloxAPI
 import json
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 import os
 import re
 import sys
+
+versionstr = "%prog 1.0"
 
 debug   = False
 verbose = False
@@ -22,6 +24,7 @@ allowed_ranges  = [ '10.39.2.0/23',
 # Remove hardcode
 allowed_domains = [ 'ci.snops.net',
                     'ops.sn.corp',
+                    'snops.net'
                     ]
 
 def main():
@@ -34,15 +37,11 @@ def main():
                        debug=debug, verbose=verbose, verify=False)
 
     r = { }  # r will hold response from wapi calls
-    iprange  = opt['iprange']
-    if opt['hostname']:
-        hostname = opt['hostname']
-    else:
-        hostname = wapi.next_available_name(opt['prefix'], 217, opt['domain'], digits=3)
+
     if not opt['noaction']:
-        r = wapi.rh_add( iprange,
-                         wapi.next_available_ip(iprange),
-                         hostname )
+        r = wapi.rh_add( opt['iprange'],
+                         wapi.next_available_ip(opt['iprange']),
+                         opt['hostname'] )
     else:
         print "Bailing due to noaction flag."
         return 1
@@ -52,7 +51,7 @@ def main():
         return 0
     
 
-    r['iprange'] = iprange
+    r['iprange'] = opt['iprange']
     return print_output(r)
 
 
@@ -73,34 +72,54 @@ def get_options():
     global debug, verbose, opt
 
     usage = "Usage: %prog [options] <FQDN to register> <IP range>"
-    parser = OptionParser(usage=usage)
-    # parser.add_option("-n", "--name", dest="hostname",
-    #                   help="hostname to register")
-    # parser.add_option("-i", "--iprange", dest="iprange",
-    #                   help="IP address to register")
-    parser.add_option("-a", "--allowed", dest="allowed", default=False,
-                      help="Print allowed domains and ranges and exit", action="store_true")
+    epilog = """
+-----------------------------------------------------------------------------
+Assigns the hostname <FQDN to register> to the first available IP
+address in <IP range>.
+-----------------------------------------------------------------------------
+Examples:
+
+> dynamo.py heyd.snops.net 10.39.32.0/24 --username 123456 --password "p@ssw0rd"
+Assigning 10.39.32.32 to heyd.snops.net.
+
+> dynamo.py heye.snops.net 10.39.32.0/24 --username 123456 --password "p@ssw0rd" --output json
+{"hostname": "heye.snops.net", "ipaddress": "10.39.32.33", "iprange": "10.39.32.0/24"}
+
+"""
+    # Set up format_epilog to not strip newlines
+    OptionParser.format_epilog = lambda self, formatter: self.epilog
+    parser = OptionParser(usage=usage, epilog=epilog, version=versionstr)
+
     parser.add_option("-d", "--debug", dest="debug", default=False,
                       help="Debugging output to STDERR", action="store_true")
-    parser.add_option("-f", "--prefix", dest="prefix", default="",
-                      help="Prefix for autogen hostname")
-    parser.add_option("-m", "--domain", dest="domain", default="",
-                      help="Domain for autogen hostname")
-    parser.add_option("-n", "--name", dest="hostname", default="",
-                      help="FQDN to be added")
-    parser.add_option("--noaction", dest="noaction", default=False,
-                      help="Don't make any changes", action="store_true")
-    parser.add_option("-o", "--output", dest="outputtype", default="user",
-                      help="Output results as JSON or XML")
-    parser.add_option("-p", "--password", dest="password",
-                      help="Your domain password")
-    parser.add_option("-u", "--username", dest="username",
-                      help="Your numeric company user ID")
     parser.add_option("-v", "--verbose", dest="verbose", default=False,
                       help="Verbose output to STDERR", action="store_true")
+    parser.add_option("--noaction", dest="noaction", default=False,
+                      help="Don't make any changes", action="store_true")
+
+    pgLogin   = OptionGroup(parser, "Infoblox Login Options",
+                          "These are your Infoblox login; probably AD.")
+    pgLogin.add_option("-p", "--password", dest="password",
+                      help="Your password.  Will prompt if not provided.")
+    pgLogin.add_option("-u", "--username", dest="username",
+                      help="Your username.  Will prompt if not provided.")
+    parser.add_option_group(pgLogin)
+
+
+    parser.add_option("-a", "--allowed", dest="allowed", default=False,
+                      help="Print allowed domains and ranges and exit", action="store_true")
+    parser.add_option("-o", "--output", dest="outputtype", default="user",
+                      help="Output results as JSON or XML")
 
 
     (options, args) = parser.parse_args()
+    if options.debug:
+        debug = True
+        print "Debug on."
+
+    if options.verbose:
+        verbose = True
+        print "Verbose on."
 
     if options.allowed:
         print "Allowed domains are as follows:"
@@ -111,16 +130,16 @@ def get_options():
             print "  " + ipr
         sys.exit(0)
 
-    debug = False
-    if options.debug:
-        debug = True
-        print "Debug on."
+    if len(args) == 2:
+        opt['hostname'] = args[0]
+        opt['iprange']  = args[1]
 
-    verbose = True
-    if options.verbose:
-        verbose = True
-        print "Verbose on."
-
+        if debug:
+            print "hostname " + opt['hostname']
+            print "iprange " + opt['iprange']
+    else:
+        parser.error("Incorrect number arguments")
+                                  
     opt['noaction'] = False
     if options.noaction:
         opt['noaction'] = True
@@ -131,36 +150,6 @@ def get_options():
     if opt['outputtype'] == "xml":
         print "Sorry, XML not supported yet."
         sys.exit(1)
-
-    opt['hostname'] = ''
-    opt['prefix']   = ''
-    opt['domain']   = ''
-
-    if options.hostname:
-        opt['hostname'] = options.hostname
-        if debug:
-            print "hostname: " + opt['hostname']
-
-    if options.prefix or options.domain:
-        if not options.prefix and options.domain:
-            print "Exiting because either prefix or domain but not both."
-            sys.exit(1)
-        elif options.hostname:
-            print "Exiting because hostname given with prefix and domain."
-            sys.exit(1)
-
-        opt['prefix'] = options.prefix
-        opt['domain'] = options.domain
-
-    if not opt['hostname'] and not (opt['prefix'] and opt['domain']):
-        print "Hostanme not given, and no prefix and domain given."
-        sys.exit(1)
-        
-    if len(args) != 1:
-        print usage
-        sys.exit(1)
-
-    opt['iprange']  = args[0]
 
     if opt['hostname']:
         hn_elems = opt['hostname'].split(".")
