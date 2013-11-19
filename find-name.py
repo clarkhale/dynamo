@@ -2,7 +2,7 @@
 
 import getpass
 from InfobloxAPI import InfobloxAPI
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 import os
 import re
 import socket
@@ -33,12 +33,12 @@ def main():
         hostname = "{0:s}{1:s}".format(opt['prefix'], 
                                         str(cnt).zfill(opt['digits']))
         if verbose:
-            print "Checking {0:s}".format(hostname)
+            print "Checking {0:s}".format(hostname),
         available = True
         for d in opt['domain']:
             fqdn = hostname + '.' + d
             if verbose:
-                print "  {0:s}: ".format(d), 
+                print " .{0:s}".format(d), 
 
             # Test DNS
             try:
@@ -62,8 +62,8 @@ def main():
                 available = False
                 break
 
-            if verbose:
-                print ""
+        if verbose:
+            print ""
 
         if available:
             if verbose:
@@ -78,26 +78,49 @@ def main():
 def get_options():
     global debug, verbose, opt
 
-    usage = "Usage: %prog [options] <FQDN to register> <IP range>"
-    parser = OptionParser(usage=usage)
+    usage = "Usage: %prog [options] <Prefix> <Count> <Digits> <Domain>"
+    epilog = """
+The automated names generated will take the form:
 
-    parser.add_option("-c", "--count", dest="count_start", default=217,
-                      help="Count start for autogen hostname")
+    Prefix + Count + '.' + Domain
+
+...with the count zero-filled out to Digits characters.  If the
+generated name appears to be used somehow; e.g., a record:A in
+Infoblox, then count is incremented and the process begins again.  The
+first name which appears free is then returned.
+
+Note that this process breaks if your DNS server always returns an A
+record, such as DNS servers that redirect you to an "ads" page telling
+you that host doesn't exist.  **** those guys.
+
+Examples:
+
+> find-name.py opskzlp 100 3 ops.sn.corp 
+Please enter your employee ID: 134270
+Please enter your domain password: 
+opskzlp108
+
+> find-name.py opsklp 4 5 ops.sn.corp --username 123456 --password "p@ssw0rd"
+opsklp00004
+
+"""
+    # Set up format_epilog to not strip newlines
+    OptionParser.format_epilog = lambda self, formatter: self.epilog
+    parser = OptionParser(usage=usage, epilog=epilog)
+
+    pgLogin   = OptionGroup(parser, "Infoblox Login Options",
+                          "These are your Infoblox login; probably AD.")
+    pgLogin.add_option("-p", "--password", dest="password",
+                      help="Your password.  Will prompt if not provided.")
+    pgLogin.add_option("-u", "--username", dest="username",
+                      help="Your username.  Will prompt if not provided.")
+    parser.add_option_group(pgLogin)
+
+
     parser.add_option("-d", "--debug", dest="debug", default=False,
-                      help="Debugging output to STDERR", action="store_true")
-    parser.add_option("-f", "--prefix", dest="prefix", default="kwsn",
-                      help="Prefix for autogen hostname")
-    parser.add_option("-g", "--digits", dest="digits", default=3,
-                      help="Zero fill count for autogen hostname")
-    parser.add_option("-m", "--domain", dest="domain", 
-                      default="snops.net,sn.corp",
-                      help="Domain for autogen hostname")
-    parser.add_option("-p", "--password", dest="password",
-                      help="Your domain password")
-    parser.add_option("-u", "--username", dest="username",
-                      help="Your numeric company user ID")
+                      help="Debugging output", action="store_true")
     parser.add_option("-v", "--verbose", dest="verbose", default=False,
-                      help="Verbose output to STDERR", action="store_true")
+                      help="Verbose output", action="store_true")
 
 
     (options, args) = parser.parse_args()
@@ -110,15 +133,25 @@ def get_options():
         verbose = True
         print "Verbose on."
 
-    opt['prefix'] = options.prefix
-    opt['digits'] = int(options.digits)
-    foo = options.domain
-    opt['domain'] = foo.split(',')
-    opt['count_start'] = int(options.count_start)
+    if len(args) == 4:
+        opt['prefix']      =     args[0]
+        opt['count_start'] = int(args[1])
+        opt['digits']      = int(args[2])
+        opt['domain']      =     args[3].split(',')
 
-    if not opt['prefix'] and opt['domain']:
-        print "Exiting because not both prefix or domain."
-        sys.exit(1)
+        if debug:
+            print "prefix " + opt['prefix']
+            print "count  " + str(opt['count_start'])
+            print "digits " + str(opt['digits'])
+            print "domain " + str(opt['domain'])
+    else:
+        parser.error("Incorrect number arguments")
+                                  
+    max_count = 10**opt['digits']
+    if opt['count_start'] >= max_count:
+        if debug:
+            print str(opt['count_start']) + ' vs. ' + str(max_count)
+        parser.error("{0:d} has more than {1:d} digits.".format(opt['count_start'], opt['digits']))
 
     opt['uid'] = ""
     if options.username:
@@ -131,6 +164,7 @@ def get_options():
     (opt['uid'], opt['passwd']) = get_login(opt['uid'], opt['passwd'])
     if debug:
         print "{0:s}, {1:s}".format(opt['uid'], opt['passwd'])
+
 
 def get_login(uid, passwd):
     """Should return tuple of uid in form (123456) and clear text password.
