@@ -8,6 +8,8 @@ import re
 import socket
 import sys
 
+versionstr = "%prog 1.0"
+
 debug   = False
 verbose = False
 opt     = {}
@@ -78,8 +80,13 @@ def main():
 def get_options():
     global debug, verbose, opt
 
-    usage = "Usage: %prog [options] <Prefix> <Count> <Digits> <Domain>"
+    usage = "Usage: %prog [options] <Prefix> <Count> <Digits> <Domain(s)>"
     epilog = """
+-----------------------------------------------------------------------------
+Generate random names based on pattern described in the CLI arguments,
+and return the first one that appears available.
+-----------------------------------------------------------------------------
+
 The automated names generated will take the form:
 
     Prefix + Count + '.' + Domain
@@ -88,6 +95,9 @@ The automated names generated will take the form:
 generated name appears to be used somehow; e.g., a record:A in
 Infoblox, then count is incremented and the process begins again.  The
 first name which appears free is then returned.
+
+If Domain(s) is a comma separated list, each domain is checked in
+turn.
 
 Note that this process breaks if your DNS server always returns an A
 record, such as DNS servers that redirect you to an "ads" page telling
@@ -103,10 +113,13 @@ opskzlp108
 > find-name.py opsklp 4 5 ops.sn.corp --username 123456 --password "p@ssw0rd"
 opsklp00004
 
+> echo `./find-name.py opskzlp 100 3 snops.net,sn.corp,ops.sn.corp --username 123456 --password "p@ssw0rd" `.ops.sn.corp is available.
+opskzlp115.ops.sn.corp is available.
+
 """
     # Set up format_epilog to not strip newlines
     OptionParser.format_epilog = lambda self, formatter: self.epilog
-    parser = OptionParser(usage=usage, epilog=epilog)
+    parser = OptionParser(usage=usage, epilog=epilog, version=versionstr)
 
     pgLogin   = OptionGroup(parser, "Infoblox Login Options",
                           "These are your Infoblox login; probably AD.")
