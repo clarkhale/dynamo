@@ -19,12 +19,14 @@ gridmgr = '10.69.15.170'
 # Remove hardcode
 allowed_ranges  = [ '10.39.2.0/23',
                     '10.39.32.0/24',
+		'192.168.255.24/29'
                     ]
 
 # Remove hardcode
 allowed_domains = [ 'ci.snops.net',
                     'ops.sn.corp',
-                    'snops.net'
+                    'snops.net',
+		'unittest.sn.corp'
                     ]
 
 def main():
