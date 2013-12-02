@@ -27,7 +27,7 @@ class InfobloxAPI:
         
         from InfobloxAPI import InfobloxAPI
 
-        i = InfobloxAPI('gridmgr.exapmle.com', 'username', 'password')
+        i = InfobloxAPI('gridmgr.example.com', 'username', 'password')
         network = '192.168.1.0/24'
         i.rh_add( network, 
                   i.next_available_ip(network),
@@ -86,7 +86,11 @@ class InfobloxAPI:
         if self.debug:
             print "inside ra_exists: " + hostname
             print self.r.text
-        return self.r.json()
+        try:
+            return self.r.json()
+        except Exception as e:
+            print self.r.text
+            sys.exit(1)
 
     def network_ref(self, network):
         """Return _ref where network=network"""
@@ -99,9 +103,14 @@ class InfobloxAPI:
         if self.debug:
             print "inside network ref:"
             print self.r.text
-        return self.r.json()[0][u'_ref']
+            
+        try:
+            return self.r.json()[0][u'_ref']
+        except Exception as e:
+            print self.r.text
+            sys.exit(1)
 
-    def next_available_ip(self, network, count=10):
+    def next_available_ip(self, network, count=3):
         """Return next available IP in network
 
            Look up the network reference, then get the count next
